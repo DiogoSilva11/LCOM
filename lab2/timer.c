@@ -61,13 +61,12 @@ int (timer_set_frequency)(uint8_t timer, uint32_t freq) {
 }
 
 int (timer_subscribe_int)(uint8_t *bit_no) {
-    /* To be implemented by the students */
-  printf("%s is not yet implemented!\n", __func__);
-<<<<<<< HEAD
-=======
-  
->>>>>>> 548933dd2dee9f487de2b115e277b04bbebfc2dc
-  return 1;
+  if (bit_no == NULL)
+    return 1;
+
+  // to do
+
+  return 0;
 }
 
 int (timer_unsubscribe_int)() {
@@ -78,54 +77,41 @@ int (timer_unsubscribe_int)() {
 }
 
 void (timer_int_handler)() {
-  /* To be implemented by the students */
-  printf("%s is not yet implemented!\n", __func__);
+  // all timer_int_handler() needs to do is to increment a global counter variable
 }
 
-<<<<<<< HEAD
-int (timer_get_conf)(uint8_t timer, uint8_t *st) {   
-  if (st == NULL) return 1;
-  int port;
-  if (timer == 0) port = TIMER_0;
-  else if (timer == 1) port = TIMER_1;
-  else if (timer == 2) port = TIMER_2;
-  else return 1;
-
-  int ctrl_register = TIMER_CTRL;
-  u32_t ctrl_word = TIMER_RB_CMD | TIMER_RB_COUNT_ | TIMER_RB_SEL(timer);
-  
-  if (sys_outb(ctrl_register, ctrl_word)) return 1;
-
-  if (util_sys_inb(port, st)) return 1;
-=======
 int (timer_get_conf)(uint8_t timer, uint8_t *st) {
   if (st == NULL)
     return 1;
   
-  int port;
-  if (timer == 0)
-    port = TIMER_0;
-  else if (timer == 1)
-    port = TIMER_1;
-  else if (timer == 2)
-    port = TIMER_2;
-  else
+  int port; // timer register
+  switch (timer) {
+    case 0:
+      port = TIMER_0; // 0x40
+      break;
+    case 1:
+      port = TIMER_1; // 0x41
+      break;
+    case 2:
+      port = TIMER_2; // 0x42
+      break;
+    default:
+      return 1;
+  }
+
+  int ctrl_register = TIMER_CTRL; // 0x43
+  u32_t rb_command = TIMER_RB_CMD | TIMER_RB_COUNT_ | TIMER_RB_SEL(timer); // appropriate read-back
+  if (sys_outb(ctrl_register, rb_command)) // to write command to the control register
     return 1;
 
-  int ctrl_register = TIMER_CTRL;
-  u32_t rb_command = TIMER_RB_CMD | TIMER_RB_COUNT_ | TIMER_RB_SEL(timer);
-  if (sys_outb(ctrl_register, rb_command))
+  if (util_sys_inb(port, st)) // to read the configuration from this timer
     return 1;
-
-  if (util_sys_inb(port, st))
-    return 1;
->>>>>>> 548933dd2dee9f487de2b115e277b04bbebfc2dc
 
   return 0;
 }
 
 int (timer_display_conf)(uint8_t timer, uint8_t st, enum timer_status_field field) {
-   union timer_status_field_val conf;
+  union timer_status_field_val conf;
   uint8_t mask;
   switch (field) {
     case tsf_all: // status
@@ -163,12 +149,12 @@ int (timer_display_conf)(uint8_t timer, uint8_t st, enum timer_status_field fiel
       mask = 0x01; // 00000001 (bit 0)
       conf.bcd = st & mask; // to isolate value (1 = true)
       break;
-  default:
-    return 1;
+    default:
+      return 1;
   }
 
-  if (timer_print_config(timer, field, conf)){
-     return 1;
-  } // to check 
+  if (timer_print_config(timer, field, conf)) // to check
+    return 1;
+
   return 0;
 }
