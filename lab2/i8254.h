@@ -9,8 +9,10 @@
  * Constants for programming the i8254 Timer. Needs to be completed.
  */
 
-#define TIMER_FREQ 1193182 /**< @brief clock frequency for timer in PC and AT */
-#define TIMER0_IRQ 0 /**< @brief Timer 0 IRQ line */
+/**< @brief minimum frequency value for timer */
+#define TIMER_MIN_FREQ (TIMER_FREQ / UINT16_MAX) + ((TIMER_FREQ % UINT16_MAX) ? 1 : 0)
+#define TIMER_FREQ     1193182 /**< @brief clock frequency for timer in PC and AT */
+#define TIMER0_IRQ     0       /**< @brief Timer 0 IRQ line */
 
 /* I/O port addresses */
 
@@ -32,14 +34,18 @@
 
 /* Register selection: bits 5 and 4 */
 
-#define TIMER_LSB     BIT(4)                  /**< @brief Initialize Counter LSB only */
-#define TIMER_MSB     BIT(5)                  /**< @brief Initialize Counter MSB only */
-#define TIMER_LSB_MSB (TIMER_LSB | TIMER_MSB) /**< @brief Initialize LSB first and MSB afterwards */
+#define TIMER_LSB            BIT(4)                  /**< @brief Initialize Counter LSB only */
+#define TIMER_MSB            BIT(5)                  /**< @brief Initialize Counter MSB only */
+#define TIMER_LSB_MSB        (TIMER_LSB | TIMER_MSB) /**< @brief Initialize LSB first and MSB afterwards */
+#define TIMER_INIT_MODE_MASK 0x30                    /**< @brief 00110000 (bits 4 and 5) */
 
 /* Operating mode: bits 3, 2 and 1 */
 
-#define TIMER_SQR_WAVE (BIT(2) | BIT(1)) /**< @brief Mode 3: square wave generator */
-#define TIMER_RATE_GEN BIT(2)            /**< @brief Mode 2: rate generator */
+#define TIMER_SQR_WAVE     (BIT(2) | BIT(1)) /**< @brief Mode 3: square wave generator */
+#define TIMER_RATE_GEN     BIT(2)            /**< @brief Mode 2: rate generator */
+#define TIMER_INCOMP_2     6                 /**< @brief value (of incompatibility) for mode 2 */
+#define TIMER_INCOMP_3     7                 /**< @brief value (of incompatibility) for mode 3 */
+#define TIMER_OP_MODE_MASK 0x0E              /**< @brief 00001110 (bits 1, 2 and 3) */
 
 /* Counting mode: bit 0 */
 
