@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "kbd.h"
+
 int main(int argc, char *argv[]) {
   // sets the language of LCF messages (can be either EN-US or PT-PT)
   lcf_set_language("EN-US");
@@ -30,10 +32,51 @@ int main(int argc, char *argv[]) {
 }
 
 int(kbd_test_scan)() {
-  /* To be completed by the students */
-  printf("%s is not yet implemented!\n", __func__);
+  // to do
 
-  return 1;
+  int ipc_status, r;
+  message msg;
+
+  uint8_t bit_no = 0;
+  if (kbd_subscribe_int(&bit_no)) // subscribe keyboard interrupts
+    return 1;
+  int irq_set = BIT(bit_no); // ...01000 (bit 3)
+  
+  uint8_t code = 0;
+  while (1) {
+    /* Get a request message. */
+    if ((r = driver_receive(ANY, &msg, &ipc_status)) != 0) {
+      printf("driver_receive failed with: %d", r);
+      continue;
+    }
+    if (is_ipc_notify(ipc_status)) { // received notification
+      switch (_ENDPOINT_P(msg.m_source)) {
+        case HARDWARE: // hardware interrupt notification
+          if (msg.m_notify.interrupts & irq_set) { // subscribed interrupt
+            if (kbd_int_handler(&code))
+              return 1;
+
+            if (kbd_check_break)
+              break;
+
+            // to do
+          }
+          break;
+        default:
+          break; // no other notifications expected: do nothing
+      }
+    }
+    else { // received a standard message, not a notification
+      // no standard messages expected: do nothing
+    }
+  }
+
+  /* unsubscribe keyboard at the end */
+  if (kbd_unsubscribe_int())
+    return 1;
+
+  return 0;
+
 }
 
 int(kbd_test_poll)() {
