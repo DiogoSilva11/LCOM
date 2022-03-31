@@ -21,6 +21,10 @@ int(util_get_MSB)(uint16_t val, uint8_t *msb) {
   return 0;
 }
 
+#ifdef LAB3
+uint32_t cnt = 0;
+#endif
+
 int (util_sys_inb)(int port, uint8_t *value) {
   if (value == NULL) {
     printf("null pointer\n");
@@ -32,6 +36,11 @@ int (util_sys_inb)(int port, uint8_t *value) {
     printf("no proper reading\n");
     return 1;
   }
+
+  /* to count the number of sys_inb() calls */
+  #ifdef LAB3
+  cnt++;
+  #endif  
 
   *value = v; // value parameter updated
   return 0; 

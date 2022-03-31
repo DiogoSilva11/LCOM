@@ -1,5 +1,5 @@
 #ifndef _LCOM_I8042_H_
-#define _LCOM_I042_H_
+#define _LCOM_I8042_H_
 
 #include <lcom/lcf.h>
 
@@ -9,8 +9,10 @@
  * Constants for programming the KBC controller (i8042).
  */
 
-#define KBD_IRQ        1    /**< @brief Keyboard IRQ line */
-#define B2_SCAN_FIRSTB 0xE0 /**< @brief First byte of two byte scancodes (usually) */
+#define KBD_IRQ        1      /**< @brief Keyboard IRQ line */
+#define KBC_FIRST_BYTE 0xE0   /**< @brief First byte of two byte scancodes (usually) */
+#define KBC_BREAK_BIT  BIT(7) /**< @brief MSB of code is set to 1 */
+#define DELAY_US       20000  /**< @brief Keyboard responds to a command in 20 ms */
 
 /* ESC Codes */
 

@@ -1,5 +1,4 @@
 #include <lcom/lcf.h>
-
 #include <lcom/lab3.h>
 
 #include <stdbool.h>
@@ -32,8 +31,6 @@ int main(int argc, char *argv[]) {
 }
 
 int(kbd_test_scan)() {
-  // to do
-
   int ipc_status, r;
   message msg;
 
@@ -42,8 +39,10 @@ int(kbd_test_scan)() {
     return 1;
   int irq_set = BIT(bit_no); // ...01000 (bit 3)
   
-  uint8_t code = 0;
-  while (1) {
+  extern uint32_t cnt;
+  cnt = 0;
+  int process = 1;
+  while (process) {
     /* Get a request message. */
     if ((r = driver_receive(ANY, &msg, &ipc_status)) != 0) {
       printf("driver_receive failed with: %d", r);
@@ -53,13 +52,11 @@ int(kbd_test_scan)() {
       switch (_ENDPOINT_P(msg.m_source)) {
         case HARDWARE: // hardware interrupt notification
           if (msg.m_notify.interrupts & irq_set) { // subscribed interrupt
-            if (kbd_int_handler(&code))
-              return 1;
-
-            if (kbd_check_break)
-              break;
-
-            // to do
+            kbc_ih();
+            if (!kbd_inc_code())
+              if (kbd_print_scancode(kbd_make(), kbd_scancode_size(), scancode))
+                return 1;
+            process = kbd_esc_break();
           }
           break;
         default:
@@ -71,19 +68,31 @@ int(kbd_test_scan)() {
     }
   }
 
-  /* unsubscribe keyboard at the end */
-  if (kbd_unsubscribe_int())
+  if (kbd_unsubscribe_int()) // unsubscribe keyboard at the end
+    return 1;
+
+  if (kbd_print_no_sysinb(cnt)) // print the number of sys_inb() kernel calls
     return 1;
 
   return 0;
-
 }
 
 int(kbd_test_poll)() {
-  /* To be completed by the students */
-  printf("%s is not yet implemented!\n", __func__);
+  extern uint32_t cnt;
+  cnt = 0;
 
-  return 1;
+  // while (...) { poll status register...
+
+  //if (kbc_issue_cmd(KBC_RCM))
+
+  // if (OBF = 1, AUX = 0) => read OUT_BUF
+
+  // write uint8_t cmd (to enable interrupts) before exit
+
+  if (kbd_print_no_sysinb(cnt)) // print the number of sys_inb() kernel calls
+    return 1;
+
+  return 0;
 }
 
 int(kbd_test_timed_scan)(uint8_t n) {
