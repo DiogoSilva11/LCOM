@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "kbd.h"
+#include "kbc.h"
 
 int main(int argc, char *argv[]) {
   // sets the language of LCF messages (can be either EN-US or PT-PT)
@@ -35,7 +35,7 @@ int(kbd_test_scan)() {
   message msg;
 
   uint8_t bit_no = 0;
-  if (kbd_subscribe_int(&bit_no)) // subscribe keyboard interrupts
+  if (kbc_subscribe_int(&bit_no)) // subscribe keyboard interrupts
     return 1;
   int irq_set = BIT(bit_no); // ...01000 (bit 3)
   
@@ -53,10 +53,10 @@ int(kbd_test_scan)() {
         case HARDWARE: // hardware interrupt notification
           if (msg.m_notify.interrupts & irq_set) { // subscribed interrupt
             kbc_ih();
-            if (!kbd_inc_code())
-              if (kbd_print_scancode(kbd_make(), kbd_scancode_size(), scancode))
+            if (!kbc_inc_code())
+              if (kbd_print_scancode(kbc_make(), kbc_scancode_size(), scancode))
                 return 1;
-            process = kbd_esc_break();
+            process = kbc_esc_break();
           }
           break;
         default:
@@ -68,7 +68,7 @@ int(kbd_test_scan)() {
     }
   }
 
-  if (kbd_unsubscribe_int()) // unsubscribe keyboard at the end
+  if (kbc_unsubscribe_int()) // unsubscribe keyboard at the end
     return 1;
 
   if (kbd_print_no_sysinb(cnt)) // print the number of sys_inb() kernel calls
@@ -80,12 +80,14 @@ int(kbd_test_scan)() {
 int(kbd_test_poll)() {
   extern uint32_t cnt;
   cnt = 0;
-
+  
   // while (...) { poll status register...
 
   //if (kbc_issue_cmd(KBC_RCM))
 
   // if (OBF = 1, AUX = 0) => read OUT_BUF
+
+  // use kbc_esc_break()
 
   // write uint8_t cmd (to enable interrupts) before exit
 
