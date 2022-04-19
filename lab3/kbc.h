@@ -19,20 +19,13 @@
 int(kbc_state)(uint8_t *stat);
 
 /**
- * @brief Issuing a command to the KBC
+ * @brief Issuing a command or argument to the KBC
  *
- * @param cmd command byte
+ * @param info command byte or argument
+ * @param arg indicates if an argument is being passed
  * @return Return 0 upon success and non-zero otherwise
  */
-int(kbc_write_cmd)(uint8_t cmd);
-
-/**
- * @brief Passing arguments of the KBC commands
- *
- * @param arg argument passed
- * @return Return 0 upon success and non-zero otherwise
- */
-int(kbc_cmd_arg)(uint8_t arg);
+int(kbc_cmd)(uint8_t info, bool arg);
 
 uint8_t scancode[2]; // array with the scancode bytes
 
@@ -99,5 +92,19 @@ int(kbc_unsubscribe_int)();
  * @brief Interrupt handler to read scancodes in C.
  */
 void(kbc_ih)();
+
+/**
+ * @brief Read the scan codes by polling
+ *
+ * @return Return 0 upon success and non-zero otherwise
+ */
+int(kbc_poll)();
+
+/**
+ * @brief Enables KBC interrupts
+ *
+ * @return Return 0 upon success and non-zero otherwise
+ */
+int(kbc_enable_int)();
 
 #endif /* __KBC_H */

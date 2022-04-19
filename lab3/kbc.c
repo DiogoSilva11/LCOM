@@ -14,48 +14,29 @@ int (kbc_state)(uint8_t *stat) {
   if (util_sys_inb(KBC_ST_REG, stat))
     return 1;
 
+  if (*stat & KBC_ST_ERROR) { // check errors
+    printf("error in the (serial) communication between the keyboard and the KBC");
+    return 1;
+  }
+
   return 0;
 }
 
-int (kbc_write_cmd)(uint8_t cmd) {
+int (kbc_cmd)(uint8_t info, bool arg) {
   uint8_t stat = 0;
-  int tries = 100; // what's the ideal number? (enough time)
+  int tries = 30; // try for a limited amount of time
   while (tries) {
     if (kbc_state(&stat))
       return 1;
 
     /* loop while 8042 input buffer is not empty */
     if (!(stat & KBC_ST_IBF)) {
-      if (sys_outb(KBC_CMD_REG, cmd)) { // no args command
-        printf("no proper writing\n");
-        return 1;
-      }
-      
-      return 0;
-    }
+      uint8_t reg = arg ? KBC_CMD_ARG : KBC_CMD_REG; // check if an argument needs to be passed
+      if (sys_outb(reg, info)) {
+          printf("no proper writing\n");
+          return 1;
+        }
 
-    tickdelay(micros_to_ticks(DELAY_US));
-    tries--;
-  }
-
-  printf("time-out\n");
-  return 1;
-}
-
-int (kbc_cmd_arg)(uint8_t arg) {
-  uint8_t stat = 0;
-  int tries = 100; // what's the ideal number? (enough time)
-  while (tries) {
-    if (kbc_state(&stat))
-      return 1;
-
-    /* loop while 8042 input buffer is not empty */
-    if (!(stat & KBC_ST_IBF)) {
-      if (sys_outb(KBC_CMD_ARG, arg)) { // argument passed using address 0x60
-        printf("no proper writing\n");
-        return 1;
-      }
-      
       return 0;
     }
 
@@ -85,8 +66,8 @@ int (kbc_scancode)() {
 }
 
 int (kbc_ret_value)(uint8_t *data) {
-  uint8_t stat = 0, data = 0;
-  int tries = 100; // what's the ideal number? (enough time)
+  uint8_t stat = 0;
+  int tries = 30; // try for a limited amount of time 
   while (tries) {
     if (kbc_state(&stat))
       return 1;
@@ -130,13 +111,8 @@ bool (kbc_inc_code)() {
 }
 
 int (kbc_esc_break)() {
-  /* in case the scancode is one byte */
-  if (scancode[0] == ESC_BK_CODE)
+  if (scancode[0] == ESC_BK_CODE) // scancode byte is 0x81
     return 0;
-  /* in case the scancode is two bytes */
-  if (kbc_scancode_size() == 2)
-    if (scancode[1] == ESC_BK_CODE)
-      return 0;
 
   return 1;
 }
@@ -178,11 +154,49 @@ void (kbc_ih)() {
   uint8_t st = 0;
   if (kbc_state(&st)) // read the status register
     return;
-
-  if (st & KBC_ST_ERROR) { // check errors
-    printf("error in the (serial) communication between the keyboard and the KBC");
-    return;
-  }
   
   kbc_scancode(); // read scancode byte
+}
+
+int (kbc_poll)() {
+  uint8_t st = 0;
+  if (kbc_state(&st)) // read the status register
+    return 1;
+
+  uint8_t byte = 0;
+  if (kbc_ret_value(&byte)) // read scancode
+    return 1;
+
+  if (byte != KBC_FIRST_BYTE) {
+    scancode[0] = byte;
+  }
+  else {
+    scancode[0] = KBC_FIRST_BYTE; // store 0xE0 to the first spot of the array
+    
+    if (kbc_ret_value(&byte)) // read next scancode byte
+      return 1;
+
+    scancode[1] = byte; // store new byte read in the second spot
+  }
+
+  return 0;  
+}
+
+int (kbc_enable_int)() {
+  /* read command byte */
+  uint8_t cmd = 0;
+  if (kbc_cmd(KBC_RCMD, false))
+    return 1;
+  if (kbc_ret_value(&cmd))
+    return 1;
+
+  cmd |= KBC_CMD_INT; // enable interrupt on OBF
+
+  /* write command byte */
+  if (kbc_cmd(KBC_WCMD, false))
+    return 1;
+  if (kbc_cmd(cmd, true))
+    return 1;
+
+  return 0;
 }
