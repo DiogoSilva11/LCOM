@@ -148,7 +148,7 @@ int (timer_display_conf)(uint8_t timer, uint8_t st, enum timer_status_field fiel
       conf.byte = st; // status byte
       break;
     case tsf_initial: // initialization mode
-      init = (st & TIMER_INIT_MODE_MASK) >> 4; // to isolate value
+      init = (st & TIMER_INIT_MODE) >> 4; // to isolate value
       switch (init) {
         case 0:
           conf.in_mode = INVAL_val;
@@ -167,7 +167,7 @@ int (timer_display_conf)(uint8_t timer, uint8_t st, enum timer_status_field fiel
       }
       break;
     case tsf_mode: // counting mode
-      conf.count_mode = (st & TIMER_OP_MODE_MASK) >> 1; // to isolate value
+      conf.count_mode = (st & TIMER_OP_MODE) >> 1; // to isolate value
       if (conf.count_mode == TIMER_INCOMP_2 || conf.count_mode == TIMER_INCOMP_3) { // 110 or 111
         uint8_t mask = 0x03; // ...011
         conf.count_mode &= mask; // will result in 010 (mode 2) or 011 (mode 3)
