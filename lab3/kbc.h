@@ -68,7 +68,7 @@ bool(kbc_inc_code)();
 /**
  * @brief Checks if the scancode corresponds to the ESC break code
  * 
- * @return Return 0 upon success and false otherwise
+ * @return Return 0 upon success and non-zero otherwise
  */
 int(kbc_esc_break)();
 

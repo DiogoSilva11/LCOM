@@ -24,7 +24,7 @@ int (kbc_state)(uint8_t *stat) {
 
 int (kbc_cmd)(uint8_t info, bool arg) {
   uint8_t stat = 0;
-  int tries = 30; // try for a limited amount of time
+  int tries = 1000; // try for a limited amount of time
   while (tries) {
     if (kbc_state(&stat))
       return 1;
@@ -66,8 +66,13 @@ int (kbc_scancode)() {
 }
 
 int (kbc_ret_value)(uint8_t *data) {
+  if (data == NULL) {
+    printf("null pointer\n");
+    return 1;
+  }
+
   uint8_t stat = 0;
-  int tries = 30; // try for a limited amount of time 
+  int tries = 1000; // try for a limited amount of time 
   while (tries) {
     if (kbc_state(&stat))
       return 1;
