@@ -160,6 +160,12 @@ void (kbc_ih)() {
   if (kbc_state(&st)) // read the status register
     return;
   
+  /* check if we are set to execute the read operation */
+  if (!(st & KBC_ST_OBF) || (st & KBC_ST_AUX)) {
+    printf("invalid operation\n");
+    return;
+  }
+
   kbc_scancode(); // read scancode byte
 }
 
