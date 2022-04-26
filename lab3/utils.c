@@ -7,7 +7,7 @@ int(util_get_LSB)(uint16_t val, uint8_t *lsb) {
     return 1;
   }
 
-  *lsb = val;
+  *lsb = (uint8_t)val;
   return 0;
 }
 
@@ -17,7 +17,7 @@ int(util_get_MSB)(uint16_t val, uint8_t *msb) {
     return 1;
   }
 
-  *msb = val >> 8; 
+  *msb = (uint8_t)(val >> 8); 
   return 0;
 }
 

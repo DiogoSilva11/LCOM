@@ -82,10 +82,10 @@ int (kbc_ret_value)(uint8_t *data) {
       if (util_sys_inb(KBC_OUT_BUF, data)) // read return value from output buffer
         return 1;
 
-      if (!(stat & KBC_ST_ERROR)) // check error in status byte
-        return 0;
-      else
+      if (kbc_state(&stat)) // check error in status byte
         return 1;
+      else
+        return 0;
     }
 
     tickdelay(micros_to_ticks(DELAY_US));

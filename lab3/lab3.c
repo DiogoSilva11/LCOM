@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #include "kbc.h"
-#include "timer.c"
+#include "timer.h"
 
 int main(int argc, char *argv[]) {
   // sets the language of LCF messages (can be either EN-US or PT-PT)
@@ -54,10 +54,11 @@ int(kbd_test_scan)() {
         case HARDWARE: // hardware interrupt notification
           if (msg.m_notify.interrupts & irq_set) { // subscribed interrupt
             kbc_ih();
-            if (!kbc_inc_code())
+            if (!kbc_inc_code()) {
               if (kbd_print_scancode(kbc_make(), kbc_scancode_size(), scancode))
                 return 1;
-            process = kbc_esc_break();
+              process = kbc_esc_break();
+            }
           }
           break;
         default:
@@ -115,7 +116,6 @@ int(kbd_test_timed_scan)(uint8_t n) {
     return 1;
   int kbc_irq_set = BIT(kbc_bit_no); // ...01000 (bit 3)
   
-  extern uint32_t int_counter;
   int_counter = 0;
   int seconds = 0, process = 1;
   while (process) {
