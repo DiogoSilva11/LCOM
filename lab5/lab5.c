@@ -7,6 +7,9 @@
 
 // Any header files included below this line should have been created by you
 
+#include "vbe_info.h"
+#include "kbc.h"
+
 int main(int argc, char *argv[]) {
   // sets the language of LCF messages (can be either EN-US or PT-PT)
   lcf_set_language("EN-US");
@@ -37,10 +40,8 @@ int(video_test_init)(uint16_t mode, uint8_t delay) {
     return 1;
   }
 
-  void *video_mem;
-  video_mem = vg_init(mode);
-  if (video_mem == NULL)
-    return 0;
+  if (vg_init(mode) == NULL)
+    return 1;
 
   int micro_sec = delay * 1e6; // microseconds = seconds x 10^6
   tickdelay(micros_to_ticks(micro_sec));
@@ -52,11 +53,65 @@ int(video_test_init)(uint16_t mode, uint8_t delay) {
 }
 
 int(video_test_rectangle)(uint16_t mode, uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint32_t color) {
-  /* To be completed */
-  printf("%s(0x%03X, %u, %u, %u, %u, 0x%08x): under construction\n",
-         __func__, mode, x, y, width, height, color);
+  if (x < 0 | y < 0 | width < 0 | height < 0) {
+    printf("invalid input\n");
+    return 1;
+  }
 
-  return 1;
+  if (vg_init(mode) == NULL)
+    return 1;
+
+  uint16_t hres = get_hres(), vres = get_vres();
+  if (x + width >= hres || y + height >= vres) {
+    printf("invalid input\n");
+    return 1;
+  }
+
+  if (vg_draw_rectangle(x, y, width, height, color) != OK)
+    return 1;
+
+  /* wait for ESC break code */
+
+  int ipc_status, r;
+  message msg;
+
+  uint8_t bit_no = 0;
+  if (kbc_subscribe_int(&bit_no)) // subscribe keyboard interrupts
+    return 1;
+  int irq_set = BIT(bit_no); // ...01000 (bit 3)
+  
+  int process = 1;
+  while (process) {
+    /* Get a request message. */
+    if ((r = driver_receive(ANY, &msg, &ipc_status)) != 0) {
+      printf("driver_receive failed with: %d", r);
+      continue;
+    }
+    if (is_ipc_notify(ipc_status)) { // received notification
+      switch (_ENDPOINT_P(msg.m_source)) {
+        case HARDWARE: // hardware interrupt notification
+          if (msg.m_notify.interrupts & irq_set) { // subscribed interrupt
+            kbc_ih();
+            if (!kbc_inc_code())
+              process = kbc_esc_break();
+          }
+          break;
+        default:
+          break; // no other notifications expected: do nothing
+      }
+    }
+    else { // received a standard message, not a notification
+      // no standard messages expected: do nothing
+    }
+  }
+
+  if (kbc_unsubscribe_int()) // unsubscribe keyboard at the end
+    return 1;
+
+  if (vg_exit() != OK)
+    return 1;
+
+  return 0;
 }
 
 int(video_test_pattern)(uint16_t mode, uint8_t no_rectangles, uint32_t first, uint8_t step) {

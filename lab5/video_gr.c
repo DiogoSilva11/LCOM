@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "bios.h"
+#include "vbe_info.h"
 
 static void *video_mem;
 
@@ -24,7 +25,7 @@ void *(vg_init)(uint16_t mode) {
   int r;
   struct minix_mem_range mr;
   mr.mr_base = vmi_p.PhysBasePtr;
-  unsigned int vram_size = hres * vres * clrdepth;
+  unsigned int vram_size = hres * vres * bytes_per_pixel();
   mr.mr_limit = mr.mr_base + vram_size;
 
   if ((r = sys_privctl(SELF, SYS_PRIV_ADD_MEM, &mr)) != OK) {
@@ -58,13 +59,36 @@ void *(vg_init)(uint16_t mode) {
 
   return video_mem;
 }
-  
+
 int (vg_draw_hline)(uint16_t x, uint16_t y, uint16_t len, uint32_t color) {
-  // to do 
+  for (int i = 0; i < len; i++) {
+    // to do
+
+    uint32_t *ptr;
+    ptr = (uint32_t)video_mem + (y * hres + x) * bytes_per_pixel();
+    *ptr = color;
+  }
+
   return 0;
 }
   
 int (vg_draw_rectangle)(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint32_t color) {
-  // to do
+  for (int i = 0; i < height; i++)
+    if (vg_draw_hline(x, y + i, width, color) != OK)
+      return 1;
+
   return 0;
+}
+
+uint16_t (get_hres)() {
+  return hres;
+}
+
+uint16_t (get_vres)() {
+  return vres;
+}
+
+uint8_t (bytes_per_pixel)() {
+  uint8_t bytes = (clrdepth / 8) + (clrdepth % 8) ? 1 : 0;
+  return bytes;
 }
