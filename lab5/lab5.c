@@ -1,6 +1,5 @@
 // IMPORTANT: you must include the following line in all your C files
 #include <lcom/lcf.h>
-
 #include <lcom/lab5.h>
 
 #include <stdint.h>
@@ -33,12 +32,20 @@ int main(int argc, char *argv[]) {
 }
 
 int(video_test_init)(uint16_t mode, uint8_t delay) {
-  vg_init(mode);
+  if (delay < 0) {
+    printf("invalid delay\n");
+    return 1;
+  }
+
+  void *video_mem;
+  video_mem = vg_init(mode);
+  if (video_mem == NULL)
+    return 0;
 
   int micro_sec = delay * 1e6; // microseconds = seconds x 10^6
   tickdelay(micros_to_ticks(micro_sec));
 
-  if (vg_exit())
+  if (vg_exit() != OK)
     return 1;
 
   return 0;

@@ -3,23 +3,27 @@
 
 #include <stdint.h>
 
-void *lm_alloc(size_t size, mmap_t *map) {
-  int r;
-  struct minix_mem_range mr;
-
-  /* allow memory mapping */
-  mr.mr_base = map->phys;
-  mr.mr_limit = mr.mr_base + size;
-
-  if ((r = sys_privctl(SELF, SYS_PRIV_ADD_MEM, &mr)) != OK) {
-    panic("sys_privctl (ADD_MEM) failed: %d\n", r);
+void *(lm_alloc)(size_t size, mmap_t *map) {
+  if (map == NULL) {
+    printf("null pointer\n");
     return NULL;
   }
+
+  int mb = 1024 * 1024;
+  map->phys = mb;
+  map->size = size;
+  map->virt = malloc(size);
 
   return map->virt;
 }
 
-bool lm_free(const mmap_t *map) {
-  // to do
+bool (lm_free)(const mmap_t *map) {
+  if (map == NULL) {
+    printf("null pointer\n");
+    return false;
+  }
+
+  free((void *)map);
+
   return true;
 }

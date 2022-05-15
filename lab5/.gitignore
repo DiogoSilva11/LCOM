@@ -1,0 +1,9 @@
+.gdbinit
+lab5
+lab5.o
+liblm.o
+vbe.o
+video_gr.o
+xpm.o
+output.txt
+trace.txt
