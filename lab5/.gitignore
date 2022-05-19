@@ -2,5 +2,7 @@
 lab5
 lab5.o
 video_gr.o
+utils.o
+kbc.o
 output.txt
 trace.txt
