@@ -12,6 +12,10 @@ static uint16_t hres; // XResolution
 static uint16_t vres; // YResolution
 static uint8_t clrdepth; // color depth (no. of bits per pixel)
 
+static uint8_t redMaskSize;
+static uint8_t greenMaskSize;
+static uint8_t blueMaskSize;
+
 void *(vg_init)(uint16_t mode) {
   /* initially, get mode information */
   vbe_mode_info_t vmi_p;
@@ -21,6 +25,10 @@ void *(vg_init)(uint16_t mode) {
   hres = vmi_p.XResolution;
   vres = vmi_p.YResolution;
   clrdepth = vmi_p.BitsPerPixel;
+
+  redMaskSize = vmi_p.RedMaskSize;
+  greenMaskSize = vmi_p.GreenMaskSize;
+  blueMaskSize = vmi_p.BlueMaskSize;
 
   int r;
   struct minix_mem_range mr;
@@ -63,22 +71,27 @@ int (vg_draw_hline)(uint16_t x, uint16_t y, uint16_t len, uint32_t color) {
     }
     
     if (clrdepth == 8) { // mode 0x105
+      if (color > UINT8_MAX) {
+        printf("invalid color\n");
+        return 1;
+      }
+
       uint8_t *ptr;
       ptr = (uint8_t *)video_mem + (y * hres + x + i) * bytes_per_pixel();
-      *ptr = color;
+      *ptr = 0xFF & color;
     }
     else if (clrdepth == 24) { // mode 0x115
       uint8_t *R;
-      R = (uint8_t *)video_mem + (y * hres + x + i) * bytes_per_pixel();
-      *R = color;
+      R = (uint8_t *)video_mem + (y * hres + x + i) * bytes_per_pixel() + 2;
+      *R = 0xFF & (color >> 16);
 
       uint8_t *G;
       G = (uint8_t *)video_mem + (y * hres + x + i) * bytes_per_pixel() + 1;
-      *G = color >> 8;
+      *G = 0xFF & (color >> 8);
 
       uint8_t *B;
-      B = (uint8_t *)video_mem + (y * hres + x + i) * bytes_per_pixel() + 2;
-      *B = color >> 16;
+      B = (uint8_t *)video_mem + (y * hres + x + i) * bytes_per_pixel();
+      *B = 0xFF & color;
     }
   }
 
@@ -105,4 +118,20 @@ int (bytes_per_pixel)() {
   int bits = (int)clrdepth;
   int bytes = (bits / 8) + ((bits % 8) ? 1 : 0);
   return bytes;
+}
+
+uint32_t (get_color)(uint8_t no_rectangles, uint32_t first, uint8_t step, uint8_t row, uint8_t col) {
+  uint32_t color = 0;
+
+  if (clrdepth == 8) // mode 0x105
+    color = (first + (row * no_rectangles + col) * step) % (1 << clrdepth);
+  else if (clrdepth == 24) { // mode 0x115
+    uint32_t R = ((0xFF & (first >> 16)) + col * step) % (1 << redMaskSize);
+    uint32_t G = ((0xFF & (first >> 8)) + row * step) % (1 << greenMaskSize);
+    uint32_t B = ((0xFF & first) + (col + row) * step) % (1 << blueMaskSize);
+
+    color = ((0xFF & R) << 16) | ((0xFF & G) << 8) | (0xFF & B); // color = RGB
+  }
+
+  return color;
 }
