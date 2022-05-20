@@ -65,34 +65,8 @@ void *(vg_init)(uint16_t mode) {
 
 int (vg_draw_hline)(uint16_t x, uint16_t y, uint16_t len, uint32_t color) {
   for (int i = 0; i < len; i++) {
-    if (x + i >= hres || y >= vres) {
-      printf("out of range\n");
+    if (generate_pixel(x + i, y, color) != OK)
       return 1;
-    }
-    
-    if (clrdepth == 8) { // mode 0x105
-      if (color > UINT8_MAX) {
-        printf("invalid color\n");
-        return 1;
-      }
-
-      uint8_t *ptr;
-      ptr = (uint8_t *)video_mem + (y * hres + x + i) * bytes_per_pixel();
-      *ptr = 0xFF & color;
-    }
-    else if (clrdepth == 24) { // mode 0x115
-      uint8_t *R;
-      R = (uint8_t *)video_mem + (y * hres + x + i) * bytes_per_pixel() + 2;
-      *R = 0xFF & (color >> 16);
-
-      uint8_t *G;
-      G = (uint8_t *)video_mem + (y * hres + x + i) * bytes_per_pixel() + 1;
-      *G = 0xFF & (color >> 8);
-
-      uint8_t *B;
-      B = (uint8_t *)video_mem + (y * hres + x + i) * bytes_per_pixel();
-      *B = 0xFF & color;
-    }
   }
 
   return 0;
@@ -118,6 +92,34 @@ int (bytes_per_pixel)() {
   int bits = (int)clrdepth;
   int bytes = (bits / 8) + ((bits % 8) ? 1 : 0);
   return bytes;
+}
+
+int (generate_pixel)(uint16_t x, uint16_t y, uint32_t color) {
+  if (clrdepth == 8) { // mode 0x105
+    if (color > UINT8_MAX) {
+      printf("invalid color\n");
+      return 1;
+    }
+
+    uint8_t *ptr;
+    ptr = (uint8_t *)video_mem + (y * hres + x) * bytes_per_pixel();
+    *ptr = 0xFF & color;  
+  }
+  else if (clrdepth == 24) { // mode 0x115
+    uint8_t *R;
+    R = (uint8_t *)video_mem + (y * hres + x) * bytes_per_pixel() + 2;
+    *R = 0xFF & (color >> 16);
+
+    uint8_t *G;
+    G = (uint8_t *)video_mem + (y * hres + x) * bytes_per_pixel() + 1;
+    *G = 0xFF & (color >> 8);
+
+    uint8_t *B;
+    B = (uint8_t *)video_mem + (y * hres + x) * bytes_per_pixel();
+    *B = 0xFF & color;
+  }
+
+  return 0;
 }
 
 uint32_t (get_color)(uint8_t no_rectangles, uint32_t first, uint8_t step, uint8_t row, uint8_t col) {

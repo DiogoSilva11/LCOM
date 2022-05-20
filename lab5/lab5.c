@@ -191,10 +191,81 @@ int(video_test_pattern)(uint16_t mode, uint8_t no_rectangles, uint32_t first, ui
 }
 
 int(video_test_xpm)(xpm_map_t xpm, uint16_t x, uint16_t y) {
-  /* To be completed */
-  printf("%s(%8p, %u, %u): under construction\n", __func__, xpm, x, y);
+  uint16_t mode = 0x105; // indexed mode
+  if (vg_init(mode) == NULL)
+    return 1;
 
-  return 1;
+  enum xpm_image_type type = XPM_INDEXED;
+  xpm_image_t img;
+  uint8_t *sprite = xpm_load(xpm, type, &img);
+
+  if (sprite == NULL) {
+    printf("null pointer\n");
+    return 1;
+  }
+
+  uint16_t hres = get_hres(), vres = get_vres();
+  uint16_t width = img.width, height = img.height;
+
+  if (x + width >= hres || y + height >= vres) {
+    printf("invalid input\n");
+    if (vg_exit() != OK)
+      return 1;
+    return 1;
+  }
+
+  for (uint16_t i = 0; i < width; i++) {
+    for (uint16_t j = 0; j < height; j++) {
+      if (generate_pixel(x + i, y + j, sprite[j * width + i]) != OK) {
+        if (vg_exit() != OK)
+          return 1;
+        return 1;
+      }
+    }
+  }
+
+  /* wait for ESC break code */
+
+  int ipc_status, r;
+  message msg;
+
+  uint8_t bit_no = 0;
+  if (kbc_subscribe_int(&bit_no)) // subscribe keyboard interrupts
+    return 1;
+  int irq_set = BIT(bit_no); // ...01000 (bit 3)
+  
+  int process = 1;
+  while (process) {
+    /* Get a request message. */
+    if ((r = driver_receive(ANY, &msg, &ipc_status)) != 0) {
+      printf("driver_receive failed with: %d", r);
+      continue;
+    }
+    if (is_ipc_notify(ipc_status)) { // received notification
+      switch (_ENDPOINT_P(msg.m_source)) {
+        case HARDWARE: // hardware interrupt notification
+          if (msg.m_notify.interrupts & irq_set) { // subscribed interrupt
+            kbc_ih();
+            if (!kbc_inc_code())
+              process = kbc_esc_break();
+          }
+          break;
+        default:
+          break; // no other notifications expected: do nothing
+      }
+    }
+    else { // received a standard message, not a notification
+      // no standard messages expected: do nothing
+    }
+  }
+
+  if (kbc_unsubscribe_int()) // unsubscribe keyboard at the end
+    return 1;
+
+  if (vg_exit() != OK)
+    return 1;
+
+  return 0;
 }
 
 int(video_test_move)(xpm_map_t xpm, uint16_t xi, uint16_t yi, uint16_t xf, uint16_t yf,
