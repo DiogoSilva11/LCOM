@@ -19,7 +19,15 @@ int (init)() {
     uint8_t kbc_bit_no = 0;
     if (kbd_subscribe_int(&kbc_bit_no)) // subscribe keyboard interrupts
         return 1;
-    kbd_irq_set = BIT(kbc_bit_no);
+    kbd_irq_set = BIT(kbc_bit_no); 
+
+    uint8_t mouse_bit_no = 0;
+    if (mouse_subscribe_int(&mouse_bit_no)) // subscribe mouse interrupts
+        return 1;
+    mouse_irq_set = BIT(mouse_bit_no);
+
+    if (mouse_enable())
+        return 1;
 
     if (vg_init(GAME_MODE) == NULL)
         return 1;
@@ -35,6 +43,18 @@ int (leave)() {
     }
 
     if (kbd_unsubscribe_int()) {
+        if (vg_exit())
+            return 1;
+        return 1;
+    }
+
+    if (mouse_disable()) {
+        if (vg_exit())
+            return 1;
+        return 1;
+    }
+
+    if (mouse_unsubscribe_int()) {
         if (vg_exit())
             return 1;
         return 1;
