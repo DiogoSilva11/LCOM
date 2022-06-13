@@ -3,6 +3,14 @@
 
 #include <stdint.h>
 
+/** @defgroup timerinfo timerinfo
+ * @{
+ * 
+ * Interrupt counter variable.
+ */
+
 extern uint32_t int_counter;
+
+/**@}*/
 
 #endif /* _LCOM_TIMER_INFO_H */
