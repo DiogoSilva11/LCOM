@@ -37,7 +37,7 @@ uint8_t scancode[2]; // array with the scancode bytes
 int(kbd_scancode)();
 
 /**
- * @brief Read return value/data from the KBC
+ * @brief Read return value/data from the KBD
  *
  * @param data a pointer to the variable that is to be updated with the return data
  * @return Return 0 upon success and non-zero otherwise
@@ -73,7 +73,7 @@ bool(kbd_inc_code)();
 int(kbd_esc_break)();
 
 /**
- * @brief Subscribes and enables KBC interrupts
+ * @brief Subscribes and enables KBD interrupts
  *
  * @param bit_no address of memory to be initialized with the
  *         bit number to be set in the mask returned upon an interrupt
@@ -82,7 +82,7 @@ int(kbd_esc_break)();
 int(kbd_subscribe_int)(uint8_t *bit_no);
 
 /**
- * @brief Unsubscribes KBC interrupts
+ * @brief Unsubscribes KBD interrupts
  *
  * @return Return 0 upon success and non-zero otherwise
  */
@@ -96,12 +96,20 @@ int(kbd_unsubscribe_int)();
 int(kbd_poll)();
 
 /**
- * @brief Enables KBC interrupts
+ * @brief Enables KBD interrupts
  *
  * @return Return 0 upon success and non-zero otherwise
  */
 int(kbd_enable_int)();
 
+/**
+ * @brief Get the relevant byte of scancode 
+ *
+ * @return Return the relevant byte of scancode
+ */
+
 uint8_t(get_key)();
+
+/**@}*/
 
 #endif /* __KBD_H */
