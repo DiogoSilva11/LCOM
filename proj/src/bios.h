@@ -29,7 +29,6 @@
 #define VBE_MODE_INFO 0x01 /**< @brief Return VBE mode information */
 #define VBE_SET_MODE  0x02 /**< @brief Set VBE mode */
 
-
 /**@}*/
 
 #endif /* _LCOM_BIOS_H */
