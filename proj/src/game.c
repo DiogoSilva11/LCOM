@@ -2,9 +2,13 @@
 
 #include "game.h"
 
+#include "math.h"
+
 // ----------------------------------------------------------------------------------------
 
+static Crosshair crosshair;
 static Hero hero;
+static Bullet bullet;
 static Fence fences[NUM_FENCES];
 static Robot robots[NUM_ROBOTS];
 
@@ -34,15 +38,17 @@ int (gameplay)() {
               if (msg.m_notify.interrupts & timer_irq_set) { // subscribed interrupt (Timer 0)
                 timer_int_handler();
                 if (!(int_counter % (freq / GAME_FPS))) {
-                  if (!validGame())
+                  if (!validGame()) {
                     return 0;
-
-                  if (displayArena())
+                  }
+                  if (displayArena()) {
                     return 1;
+                  }
                 }
-                if (!(int_counter % freq)) {
+                if (!(int_counter % 10))
                   moveRobots();
-                }
+                if (!(int_counter % 2))
+                  bulletTravel();
               }
               if (msg.m_notify.interrupts & kbd_irq_set) { // subscribed interrupt (Keyboard)
                 kbc_ih();
@@ -51,8 +57,21 @@ int (gameplay)() {
 
                   if (key_code == KEY_ESC)
                     return 0;
-
+                  
                   moveHero(key_code);
+                }
+              }
+              if (msg.m_notify.interrupts & mouse_irq_set) { // subscribed interrupt (Mouse)
+                mouse_ih();
+                if (mouse_packet_full() && !mouse_overflow()) {
+                  struct mouse_ev event = mouse_event();
+                  
+                  if (event.type == LB_RELEASED) {
+                    if (bullet.hit)
+                      shoot();
+                  }
+                  else if (event.type == MOUSE_MOV) 
+                    moveCrosshair(event.delta_x, event.delta_y);
                 }
               }
               break;
@@ -82,6 +101,11 @@ int (loadGame)() {
   hero.x = getPixelX(11);
   hero.y = getPixelY(11);
   hero.alive = true;
+
+  crosshair.x = getPixelX(20);
+  crosshair.y = getPixelY(1);
+
+  bulletReset();
 
   int cnt = 0;
 
@@ -178,7 +202,7 @@ int (loadGame)() {
   Robot r4 = {getPixelX(17), getPixelY(19), true};
   robots[4] = r4;
 
-  Robot r5 = {getPixelX(2), getPixelY(2), true};
+  Robot r5 = {getPixelX(2), getPixelY(4), true};
   robots[5] = r5;
 
   Robot r6 = {getPixelX(9), getPixelY(2), true};
@@ -204,13 +228,29 @@ int (displayArena)() {
   if (drawFences())
     return 1;
 
-  if (drawHero())
-    return 1;
-
   if (drawRobots())
     return 1;
 
+  if (drawBullet())
+    return 1;
+
+  if (drawHero())
+    return 1;
+
+  if (drawCrosshair())
+    return 1;
+
   vg_draw_content();
+
+  return 0;
+}
+
+int (drawCrosshair)() {
+  if (vg_draw_element(crosshair_sprite, crosshair.x, crosshair.y)) {
+    if (leave())
+      return 1;
+    return 1;
+  }
 
   return 0;
 }
@@ -258,13 +298,25 @@ int (drawRobots)() {
   return 0;
 }
 
+int (drawBullet)() {
+  if (!bullet.hit) {
+    if (vg_draw_element(bullet_sprite, bullet.x, bullet.y)) {
+      if (leave())
+        return 1;
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
 // ----------------------------------------------------------------------------------------
 
 bool (validGame)() {
   if (!hero.alive)
     return false;
 
-  int dead_robots = 1;
+  int dead_robots = 0;
   for(int i = 0 ; i < NUM_ROBOTS; i++)
     if (!robots[i].alive)
       dead_robots++;
@@ -274,6 +326,16 @@ bool (validGame)() {
 
   return true;
 }
+
+void (moveCrosshair)(int16_t x, int16_t y) {
+  crosshair.x = (0 < crosshair.x + x) ? crosshair.x + x : 0;
+  crosshair.x = (crosshair.x < CONSOLE_WIDTH - 1) ? crosshair.x : (CONSOLE_WIDTH - 1);
+
+  crosshair.y = (0 < crosshair.y - y) ? crosshair.y - y : 0;
+  crosshair.y = (crosshair.y < CONSOLE_HEIGHT - 1) ? crosshair.y : (CONSOLE_HEIGHT - 1);
+}
+
+// ----------------------------------------------------------------------------------------
 
 bool (checkCollision)(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2) {
   return ((x1 < x2 + w2) && (x1 + w1 > x2) && (y1 < y2 + h2) && (y1 + h1 > y2));
@@ -300,25 +362,37 @@ bool (canHeroMove)(uint16_t newX, uint16_t newY) {
 
 void (moveHero)(uint8_t key_code) {
   switch (key_code) {
-      case KEY_RIGHT:
-        if (canHeroMove(hero.x + HERO_X_SPEED, hero.y))
-          if (hero.alive)
+      case KEY_D:
+        if (canHeroMove(hero.x + HERO_X_SPEED, hero.y)) {
+          if (hero.alive) {
             hero.x += HERO_X_SPEED;
+            bulletStore();
+          }
+        }
         break;
-      case KEY_LEFT:
-        if (canHeroMove(hero.x - HERO_X_SPEED, hero.y))
-          if (hero.alive)
+      case KEY_A:
+        if (canHeroMove(hero.x - HERO_X_SPEED, hero.y)) {
+          if (hero.alive) {
             hero.x -= HERO_X_SPEED;
+            bulletStore();
+          }
+        }
         break;
-      case KEY_UP:
-        if (canHeroMove(hero.x, hero.y - HERO_Y_SPEED))
-          if (hero.alive)
+      case KEY_W:
+        if (canHeroMove(hero.x, hero.y - HERO_Y_SPEED)) {
+          if (hero.alive) {
             hero.y -= HERO_Y_SPEED;
+            bulletStore();
+          }
+        }
         break;
-      case KEY_DOWN:
-        if (canHeroMove(hero.x, hero.y + HERO_Y_SPEED))
-          if (hero.alive)
+      case KEY_S:
+        if (canHeroMove(hero.x, hero.y + HERO_Y_SPEED)) {
+          if (hero.alive) {
             hero.y += HERO_Y_SPEED;
+            bulletStore();
+          }
+        }
         break;
       default:
         break;
@@ -327,30 +401,30 @@ void (moveHero)(uint8_t key_code) {
 
 // ----------------------------------------------------------------------------------------
 
-enum Movement (shortestPath)(int x, int y) {
-  if (hero.y == y) { // hero and robot are in the same row
-		if (hero.x > x) // hero is to the right of the robot
-			return RIGHT; // robot moves right
-		else if (hero.x < x) // hero is to the left of the robot
-			return LEFT; // robot moves left
+enum Movement (shortestPath)(int x1, int y1, int x2, int y2) {
+  if (y1 == y2) { 
+		if (x1 > x2) 
+			return RIGHT; 
+		else if (x1 < x2) 
+			return LEFT; 
 	}
-	else if (hero.x == x) { // hero and robot are in the same column
-		if (hero.y > y) // hero is below the robot
-			return DOWN; // robot moves down
-		else if (hero.y < y) // player is above the robot
-			return UP; // robot moves up
+	else if (x1 == x2) {
+		if (y1 > y2)
+			return DOWN; 
+		else if (y1 < y2) 
+			return UP; 
 	}
-	else if (hero.y > y) { // hero is below the robot 
-		if (hero.x > x) // hero is to the right of the robot
-			return DOWN_RIGHT; // robot moves down and to the right
-		else if (hero.x < x) // hero is to the left of the robot
-			return DOWN_LEFT; // robot moves down and to the left
+	else if (y1 > y2) { 
+		if (x1 > x2)
+			return DOWN_RIGHT;
+		else if (x1 < x2) 
+			return DOWN_LEFT; 
 	}
-	else if (hero.y < y) { // hero is above the robot
-		if (hero.x > x) // hero is to the right of the robot
-			return UP_RIGHT; // robot moves up and to the right
-		else if (hero.x < x) // hero is to the left of the robot
-			return UP_LEFT; // robot moves up and to the left
+	else if (y1 < y2) { 
+		if (x1 > x2)
+			return UP_RIGHT;
+		else if (x1 < x2)
+			return UP_LEFT; 
 	}
 
   return INVALID;
@@ -362,19 +436,23 @@ bool (canRobotMove)(int id, uint16_t newX, uint16_t newY) {
     return false;
   }
 
-  for (int i = 0; i < NUM_FENCES; i++) {
-    if (checkCollision(newX, newY, ENTITY_WIDTH, ENTITY_HEIGHT, fences[i].x, fences[i].y, ENTITY_WIDTH, ENTITY_HEIGHT)) {
-      robots[id].alive = false;
-      return false;
-    }
+  if (checkCollision(newX, newY, ENTITY_WIDTH, ENTITY_HEIGHT, bullet.x, bullet.y, BULLET_WIDTH, BULLET_HEIGHT)) {
+    robots[id].alive = false;
+    return false;
   }
 
   for (int i = 0; i < NUM_ROBOTS; i++) {
-    if (checkCollision(newX, newY, ENTITY_WIDTH, ENTITY_HEIGHT, robots[i].x, robots[i].y, ENTITY_WIDTH, ENTITY_HEIGHT)) {
-      if (!robots[i].alive)
-        return false;
+    if (i == id)
+      continue;
+    else {
+      if (checkCollision(newX, newY, ENTITY_WIDTH, ENTITY_HEIGHT, robots[i].x, robots[i].y, ENTITY_WIDTH, ENTITY_HEIGHT))
+          return false;
     }
   }
+
+  for (int i = 0; i < NUM_FENCES; i++)
+    if (checkCollision(newX, newY, ENTITY_WIDTH, ENTITY_HEIGHT, fences[i].x, fences[i].y, ENTITY_WIDTH, ENTITY_HEIGHT))
+      return false;
 
   return true;
 }
@@ -382,7 +460,7 @@ bool (canRobotMove)(int id, uint16_t newX, uint16_t newY) {
 void (moveRobots)() {
   for (int i = 0; i < NUM_ROBOTS; i++) {
     if (robots[i].alive) {
-      switch (shortestPath(robots[i].x, robots[i].y)) {
+      switch (shortestPath(hero.x, hero.y, robots[i].x, robots[i].y)) {
         case RIGHT:
           if (canRobotMove(i, robots[i].x + ROBOT_X_SPEED, robots[i].y))
             if (robots[i].alive)
@@ -391,17 +469,17 @@ void (moveRobots)() {
         case LEFT:
           if (canRobotMove(i, robots[i].x - ROBOT_X_SPEED, robots[i].y))
             if (robots[i].alive)
-          robots[i].x -= ROBOT_X_SPEED;
+              robots[i].x -= ROBOT_X_SPEED;
           break;
         case DOWN:
           if (canRobotMove(i, robots[i].x, robots[i].y + ROBOT_Y_SPEED))
             if (robots[i].alive)
-          robots[i].y += ROBOT_Y_SPEED;
+              robots[i].y += ROBOT_Y_SPEED;
           break;
         case UP:
           if (canRobotMove(i, robots[i].x, robots[i].y - ROBOT_Y_SPEED))
             if (robots[i].alive)
-          robots[i].y -= ROBOT_Y_SPEED;
+              robots[i].y -= ROBOT_Y_SPEED;
           break;
         case DOWN_RIGHT:
           if (canRobotMove(i, robots[i].x + ROBOT_X_SPEED, robots[i].y + ROBOT_Y_SPEED)) {
@@ -441,5 +519,76 @@ void (moveRobots)() {
     }
   }
 } 
+
+// ----------------------------------------------------------------------------------------
+
+int (crosshairCenterX)() {
+  return (crosshair.x + BULLET_WIDTH / 2);
+}
+
+int (crosshairCenterY)() {
+  return (crosshair.y + BULLET_HEIGHT / 2);
+}
+
+void (bulletReset)() {
+  bullet.hit = true;
+  bullet.x = hero.x;
+  bullet.y = hero.y;
+  bullet.xStep = 0;
+  bullet.yStep = 0;
+}
+
+void (shoot)() {
+  bullet.hit = false;
+
+  bulletDirection();
+}
+
+void (bulletDirection)() {
+  int x = crosshair.x - bullet.x;
+  int y = crosshair.y - bullet.y;
+
+  double s = pow(x, 2) + pow(y, 2);
+  int hypo = (int)(round(sqrt(s)));
+
+  bullet.xStep = (x * BULLET_SPEED) / hypo;
+  bullet.yStep = (y * BULLET_SPEED) / hypo;
+}
+
+bool (checkHit)(uint16_t newX, uint16_t newY) {
+  for (int i = 0; i < NUM_FENCES; i++) {
+    if (checkCollision(newX, newY, BULLET_WIDTH, BULLET_HEIGHT, fences[i].x, fences[i].y, ENTITY_WIDTH, ENTITY_HEIGHT)) {
+      bulletReset();
+      return true;
+    }
+  }
+
+  for (int i = 0; i < NUM_ROBOTS; i++) {
+    if (checkCollision(newX, newY, BULLET_WIDTH, BULLET_HEIGHT, robots[i].x, robots[i].y, ENTITY_WIDTH, ENTITY_HEIGHT)) {
+      bulletReset();
+      robots[i].alive = false;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+void (bulletTravel)() {
+  if (bullet.hit)
+    return;
+
+  if (!checkHit(bullet.x + bullet.xStep, bullet.y + bullet.yStep)) {
+    bullet.x += bullet.xStep;
+    bullet.y += bullet.yStep;
+  }
+}
+
+void (bulletStore)() {
+  if (bullet.hit) {
+    bullet.x = hero.x;
+    bullet.y = hero.y;
+  }
+}
 
 // ----------------------------------------------------------------------------------------
