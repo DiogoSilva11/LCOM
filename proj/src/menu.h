@@ -11,8 +11,26 @@
 #include "controller.h"
 #include "sprites.h"
 
+/** @defgroup menu menu
+ * @{
+ * 
+ * Functions for the menu.
+ */
+
+/**
+ * @brief Main menu loop and logic
+ * 
+ * @return Return 0 upon success and non-zero otherwise
+ */
 int (main_menu)();
 
+/**
+ * @brief Draws the initial menu on the console screen
+ * 
+ * @return Return 0 upon success and non-zero otherwise
+ */
 int (displayMenu)();
+
+/**@}*/
 
 #endif /* _MENU_H */
